@@ -60,7 +60,7 @@ GO
 Registrar los usuarios en la biblioteca
 
 Se implenta esta funcionalidad por medio de un stored procedure, esto debido a que
-se necesita el manejo de par�metros y modificar las tablas insertando datos
+se necesita el manejo de parametros y modificar las tablas insertando datos
 
 */
 
@@ -96,10 +96,10 @@ END;
 GO
 
 /*
-Registrar los pr�stamos de los libros realizados a los usuarios
+Registrar los prestamos de los libros realizados a los usuarios
 
 Se implenta esta funcionalidad por medio de un stored procedure, esto debido a que
-se necesita el manejo de par�metros y modificar las tablas insertando datos
+se necesita el manejo de parametros y modificar las tablas insertando datos
 */
 CREATE OR ALTER PROCEDURE RegistrarPrestamo
     @CorreoUsuario NVARCHAR(255),
@@ -109,28 +109,28 @@ CREATE OR ALTER PROCEDURE RegistrarPrestamo
 AS
 BEGIN
     SET NOCOUNT ON;
-    PRINT 'Iniciando procedimiento de registro de pr�stamo...';
+    PRINT 'Iniciando procedimiento de registro de prestamo...';
     BEGIN TRY
         SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
         BEGIN TRANSACTION;
-        -- Verificar si el libro ya est� prestado
+        -- Verificar si el libro ya esta prestado
         IF EXISTS (
             SELECT 1 FROM lib.Libro
             WHERE ISBN = @ISBNLibro AND Estado = 1
         )
         BEGIN
-            PRINT 'Error: El libro ya est� en pr�stamo.';
+            PRINT 'Error: El libro ya esta en prestamo.';
             ROLLBACK TRANSACTION;
             RETURN;
         END
-        -- Verificar si el usuario ya tiene 3 pr�stamos activos
+        -- Verificar si el usuario ya tiene 3 prestamos activos
         IF (
             SELECT COUNT(*)
             FROM Prestamo
             WHERE CorreoUsuario = @CorreoUsuario AND FechaDevolucionReal IS NULL
         ) >= 3
         BEGIN
-            PRINT 'Error: El usuario ya tiene 3 pr�stamos activos.';
+            PRINT 'Error: El usuario ya tiene 3 prestamo activos.';
             ROLLBACK TRANSACTION;
             RETURN;
         END                 
@@ -154,11 +154,11 @@ BEGIN
         SET Estado = 1
         WHERE ISBN = @ISBNLibro;
 
-        PRINT 'Pr�stamo registrado exitosamente.';
+        PRINT 'Prestamo registrado exitosamente.';
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
-        PRINT 'Se produjo un error al registrar el pr�stamo.';
+        PRINT 'Se produjo un error al registrar el prestamo.';
         ROLLBACK TRANSACTION;
     END CATCH
 END;
@@ -177,7 +177,7 @@ CREATE OR ALTER PROCEDURE RegistrarDevolucion
 AS
 BEGIN
     SET NOCOUNT ON;
-    PRINT 'Iniciando procedimiento de registro de devoluci�n...';
+    PRINT 'Iniciando procedimiento de registro de devolucion...';
 
     BEGIN TRY
         SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
@@ -191,11 +191,11 @@ BEGIN
               AND FechaDevolucionReal IS NULL
         )
         BEGIN
-            PRINT 'Error: No existe un pr�stamo activo para este usuario y libro.';
+            PRINT 'Error: No existe un prestamo activo para este usuario y libro.';
             ROLLBACK TRANSACTION;
             RETURN;
         END
-        -- Actualizar pr�stamo con la fecha de devoluci�n real
+        -- Actualizar prestamo con la fecha de devoluci�n real
         UPDATE Prestamo
         SET FechaDevolucionReal = @FechaDevolucionReal
         WHERE CorreoUsuario = @CorreoUsuario
@@ -205,11 +205,11 @@ BEGIN
         UPDATE lib.Libro
         SET Estado = 0
         WHERE ISBN = @ISBNLibro;
-        PRINT 'Devoluci�n registrada exitosamente.';
+        PRINT 'Devolucion registrada exitosamente.';
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
-        PRINT 'Se produjo un error al registrar la devoluci�n.';
+        PRINT 'Se produjo un error al registrar la devolucion.';
         ROLLBACK TRANSACTION;
     END CATCH
 END;
@@ -218,9 +218,9 @@ GO
 
 
 /*
-Bit�cora de los pr�stamos y las devoluciones que realizan los usuarios
-Permite consultar el hist�rico de los pr�stamos y las devoluciones realizadas por un usuario
-Se implement� usando un trigger, esto porque permiten automatizar el registro en la bit�cora.
+Bitacora de los prestamos y las devoluciones que realizan los usuarios
+Permite consultar el historico de los prestamos y las devoluciones realizadas por un usuario
+Se implemento usando un trigger, esto porque permiten automatizar el registro en la bitacora.
 */
 CREATE OR ALTER TRIGGER TR_BitacoraPrestamos ON Prestamo
 AFTER INSERT, UPDATE
@@ -228,7 +228,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Registrar nuevos pr�stamos (inserciones con FechaDevolucionReal = NULL)
+    -- Registrar nuevos prestamos (inserciones con FechaDevolucionReal = NULL)
     INSERT INTO BitacoraPrestamos (CorreoUsuario, ISBNLibro, FechaOperacion, TipoOperacion)
     SELECT
         i.CorreoUsuario,
@@ -262,9 +262,32 @@ GO
 Consultar los cinco libros mas prestados
 
 */
+CREATE OR ALTER VIEW Top5LibrosMasPrestados AS
+SELECT TOP 5
+    p.ISBNLibro,
+    l.Titulo,
+    COUNT(*) AS VecesPrestado
+FROM Prestamo p
+JOIN lib.Libro l ON p.ISBNLibro = l.ISBN
+GROUP BY p.ISBNLibro, l.Titulo
+ORDER BY VecesPrestado DESC;
+GO
 
 
 /*
 Consultar los usuarios con mas de dos prestamos activos, es decir, para los que no se haya
 realizado la devolucion
 */
+
+CREATE OR ALTER VIEW UsuariosConMasDeDosPrestamosActivos AS
+SELECT 
+    u.Correo,
+    u.Nombre,
+    u.Apellido,
+    COUNT(p.LlaveInterna) AS CantidadDePrestamosActivos
+FROM usr.Usuario u
+JOIN Prestamo p ON u.Correo = p.CorreoUsuario
+WHERE p.FechaDevolucionReal IS NULL
+GROUP BY u.Correo, u.Nombre, u.Apellido
+HAVING COUNT(p.LlaveInterna) > 2;
+GO

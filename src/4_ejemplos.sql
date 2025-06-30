@@ -55,5 +55,17 @@ ORDER BY FechaOperacion;
 
 -- Consultar los 5 libros mas prestados
 
+SELECT * FROM Top5LibrosMasPrestados;
+
+
 -- Consultar los usuarios con mas de 2 prestamos activos (Fecha devolucion real = NULL)
+
+EXEC RegistrarPrestamo
+    @CorreoUsuario = 'sofia.ramirez@example.com',
+    @ISBNLibro = '978-88888',
+    @FechaPrestamo = '2025-07-01',
+    @FechaDevolucionPrevista = '2025-07-15';
+
+
+SELECT * FROM UsuariosConMasDeDosPrestamosActivos;
 
