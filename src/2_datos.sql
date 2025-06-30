@@ -1,11 +1,11 @@
 /*
 
-TAREA # 3 Y # 4 - Practica de Implementación de una Base de Datos
+TAREA # 3 Y # 4 - Practica de Implementacion de una Base de Datos
 
 Estudiante: Alejandro Jimenez Rojas
 Carnet: C04079
 
-Este archivo contiene el código para insertar datos de prueba que permitan ejecutar ejemplos de las funcionalidades.
+Este archivo contiene el codigo para insertar datos de prueba que permitan ejecutar ejemplos de las funcionalidades.
 Incluye todos los datos del anexo 1 de la tarea
 */
 
