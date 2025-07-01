@@ -35,6 +35,25 @@ EXEC RegistrarPrestamo
     @FechaPrestamo = '2025-07-01',
     @FechaDevolucionPrevista = '2025-07-15';
 
+-- Registrar 3 prestamos para más adelante probar la cantidad de prestamos
+EXEC RegistrarPrestamo
+    @CorreoUsuario = 'sofia.ramirez@example.com',
+    @ISBNLibro = '978-11111',
+    @FechaPrestamo = '2025-07-01',
+    @FechaDevolucionPrevista = '2025-07-15';
+
+EXEC RegistrarPrestamo
+    @CorreoUsuario = 'sofia.ramirez@example.com',
+    @ISBNLibro = '978-22222',
+    @FechaPrestamo = '2025-07-01',
+    @FechaDevolucionPrevista = '2025-07-15';
+
+EXEC RegistrarPrestamo
+    @CorreoUsuario = 'sofia.ramirez@example.com',
+    @ISBNLibro = '978-98765',
+    @FechaPrestamo = '2025-07-01',
+    @FechaDevolucionPrevista = '2025-07-15';
+
 -- Registro de devolucion
 EXEC RegistrarDevolucion
     @CorreoUsuario = 'ana.gomez@example.com',
@@ -55,17 +74,9 @@ ORDER BY FechaOperacion;
 
 -- Consultar los 5 libros mas prestados
 
-SELECT * FROM Top5LibrosMasPrestados;
-
+SELECT * FROM lib.Top5LibrosMasPrestados;
 
 -- Consultar los usuarios con mas de 2 prestamos activos (Fecha devolucion real = NULL)
 
-EXEC RegistrarPrestamo
-    @CorreoUsuario = 'sofia.ramirez@example.com',
-    @ISBNLibro = '978-88888',
-    @FechaPrestamo = '2025-07-01',
-    @FechaDevolucionPrevista = '2025-07-15';
-
-
-SELECT * FROM UsuariosConMasDeDosPrestamosActivos;
+SELECT * FROM usr.UsuariosConMasDeDosPrestamosActivos;
 
