@@ -22,19 +22,19 @@ No recibe como parametro el estado porque siempre esta disponible al agregarlo
 */
 CREATE OR ALTER PROCEDURE lib.RegistrarLibro
     @ISBN NVARCHAR(20),
-    @Titulo NVARCHAR(255),
-    @Autor NVARCHAR(255),
-    @Editorial NVARCHAR(255),
+    @Titulo NVARCHAR(100),
+    @Autor NVARCHAR(100),
+    @Editorial NVARCHAR(100),
     @Anno INT,
     @Tematica NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @Estado BIT; -- Por defecto, el libro est� disponible
+    DECLARE @Estado BIT; -- Por defecto, el libro debe estar disponible
     SET @Estado = 0;
     PRINT 'Iniciando procedimiento de registro de libro...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; -- M�s alto nivel de aislamiento para impedir errores
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
         BEGIN TRANSACTION;
         -- Verificar si el ISBN ya existe
         IF EXISTS (SELECT 1 FROM lib.Libro WHERE ISBN = @ISBN)
@@ -65,7 +65,7 @@ se necesita el manejo de parametros y modificar las tablas insertando datos
 */
 
 CREATE OR ALTER PROCEDURE usr.RegistrarUsuario
-    @Correo NVARCHAR(255),
+    @Correo NVARCHAR(100),
     @Nombre NVARCHAR(100),
     @Apellido NVARCHAR(100)
 AS
@@ -73,7 +73,7 @@ BEGIN
     SET NOCOUNT ON;
     PRINT 'Iniciando procedimiento de registro de usuario...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
         BEGIN TRANSACTION;
         -- Verificar si el correo ya existe
         IF EXISTS (SELECT 1 FROM usr.Usuario WHERE Correo = @Correo)
@@ -102,7 +102,7 @@ Se implenta esta funcionalidad por medio de un stored procedure, esto debido a q
 se necesita el manejo de parametros y modificar las tablas insertando datos
 */
 CREATE OR ALTER PROCEDURE RegistrarPrestamo
-    @CorreoUsuario NVARCHAR(255),
+    @CorreoUsuario NVARCHAR(100),
     @ISBNLibro NVARCHAR(20),
     @FechaPrestamo DATE,
     @FechaDevolucionPrevista DATE
@@ -111,7 +111,7 @@ BEGIN
     SET NOCOUNT ON;
     PRINT 'Iniciando procedimiento de registro de prestamo...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
         BEGIN TRANSACTION;
         -- Verificar si el libro ya esta prestado
         IF EXISTS (
@@ -171,7 +171,7 @@ Se implenta esta funcionalidad por medio de un stored procedure, esto debido a q
 se necesita el manejo de parametros y modificar las tablas insertando datos
 */
 CREATE OR ALTER PROCEDURE RegistrarDevolucion
-    @CorreoUsuario NVARCHAR(255),
+    @CorreoUsuario NVARCHAR(100),
     @ISBNLibro NVARCHAR(20),
     @FechaDevolucionReal DATE
 AS
@@ -180,9 +180,9 @@ BEGIN
     PRINT 'Iniciando procedimiento de registro de devolucion...';
 
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
         BEGIN TRANSACTION;
-        -- Verificar si existe un pr�stamo activo para ese usuario y libro
+        -- Verificar si existe un prestamo activo para ese usuario y libro
         IF NOT EXISTS (
             SELECT 1
             FROM Prestamo
@@ -221,37 +221,43 @@ GO
 Bitacora de los prestamos y las devoluciones que realizan los usuarios
 Permite consultar el historico de los prestamos y las devoluciones realizadas por un usuario
 Se implemento usando un trigger, esto porque permiten automatizar el registro en la bitacora.
+
+https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql?view=sql-server-ver17
 */
 CREATE OR ALTER TRIGGER TR_BitacoraPrestamos ON Prestamo
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     -- Registrar nuevos prestamos (inserciones con FechaDevolucionReal = NULL)
+    -- Registros que fueron insertados (están en la tabla virtual "inserted")
+    -- cuya FechaDevolucionReal es NULL (el libro aún no ha sido devuelto)
+    -- y que NO están en "deleted", lo que indica que no es un UPDATE, sino un INSERT real
     INSERT INTO BitacoraPrestamos (CorreoUsuario, ISBNLibro, FechaOperacion, TipoOperacion)
     SELECT
         i.CorreoUsuario,
         i.ISBNLibro,
         GETDATE(),
-        'Prestamo'
-    FROM inserted i
+        'Prestamo' -- Tipo de operación: se registra como "Prestamo"
+    FROM inserted AS i
     WHERE i.FechaDevolucionReal IS NULL
       AND NOT EXISTS (
           SELECT 1
-          FROM deleted d
+          FROM deleted AS d
           WHERE d.LlaveInterna = i.LlaveInterna
       );
-
     -- Registrar devoluciones (actualizaciones que cambian FechaDevolucionReal de NULL a valor)
+    -- registros que fueron actualizados (por eso se comparan "inserted" y "deleted")
+    -- donde antes (en "deleted") la FechaDevolucionReal era NULL (no devuelto)
+    -- y ahora (en "inserted") la FechaDevolucionReal tiene valor (ya fue devuelto)
     INSERT INTO BitacoraPrestamos (CorreoUsuario, ISBNLibro, FechaOperacion, TipoOperacion)
     SELECT
         i.CorreoUsuario,
         i.ISBNLibro,
         GETDATE(),
-        'Devolucion'
-    FROM inserted i
-    JOIN deleted d ON i.LlaveInterna = d.LlaveInterna
+        'Devolucion' -- Tipo de operación: se registra como "Devolucion"
+    FROM inserted AS i
+    JOIN deleted AS d ON i.LlaveInterna = d.LlaveInterna
     WHERE d.FechaDevolucionReal IS NULL
       AND i.FechaDevolucionReal IS NOT NULL;
 END;
@@ -261,13 +267,14 @@ GO
 /*
 Consultar los cinco libros mas prestados
 
+Se crea como un view porque es únicamente una consulta del top 5, no es necesario almacenar nada (más que puede cambiar)
 */
-CREATE OR ALTER VIEW Top5LibrosMasPrestados AS
+CREATE OR ALTER VIEW lib.Top5LibrosMasPrestados AS
 SELECT TOP 5
     p.ISBNLibro,
     l.Titulo,
-    COUNT(*) AS VecesPrestado
-FROM Prestamo p
+    COUNT(*) AS VecesPrestado -- cuántas veces se ha prestado el libro
+FROM Prestamo AS p
 JOIN lib.Libro l ON p.ISBNLibro = l.ISBN
 GROUP BY p.ISBNLibro, l.Titulo
 ORDER BY VecesPrestado DESC;
@@ -275,19 +282,21 @@ GO
 
 
 /*
-Consultar los usuarios con mas de dos prestamos activos, es decir, para los que no se haya
+Consultar los usuarios con mas de dos prestamos activos (estricto, 2 prestamos no van a mostrarse), es decir, para los que no se haya
 realizado la devolucion
+
+Se crea como view por el mismo motivo que el objeto anterior, es una consulta. Queda mejor con esto que con una función o procedimiento
 */
 
-CREATE OR ALTER VIEW UsuariosConMasDeDosPrestamosActivos AS
+CREATE OR ALTER VIEW usr.UsuariosConMasDeDosPrestamosActivos AS
 SELECT 
     u.Correo,
     u.Nombre,
     u.Apellido,
-    COUNT(p.LlaveInterna) AS CantidadDePrestamosActivos
-FROM usr.Usuario u
-JOIN Prestamo p ON u.Correo = p.CorreoUsuario
-WHERE p.FechaDevolucionReal IS NULL
+    COUNT(p.LlaveInterna) AS CantidadDePrestamosActivos -- Contar cuántos préstamos tiene cada usuario.
+FROM usr.Usuario AS u
+JOIN Prestamo AS p ON u.Correo = p.CorreoUsuario
+WHERE p.FechaDevolucionReal IS NULL -- Filtra solo los préstamos activos
 GROUP BY u.Correo, u.Nombre, u.Apellido
-HAVING COUNT(p.LlaveInterna) > 2;
+HAVING COUNT(p.LlaveInterna) > 2; -- Filtra los grupos (usuarios) que tienen más de 2 préstamos activos
 GO
