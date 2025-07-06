@@ -6,6 +6,9 @@ Un programa sencillo de biblioteca escrito únicamente en T-SQL, incluye creaci�
 - Carnet: C04079
 - Profesor: Luis Carlos Salas
 
+>[!NOTE]
+>La tarea ya estaba lista una semana antes de la fecha pero se cambio el nivel de aislamiento a `REPEATABLE READ` considerando que es una aplicación para inventarios
+
 ## Contenido
 
 Se entregan 2 carpetas y un `README.md`(este archivo).

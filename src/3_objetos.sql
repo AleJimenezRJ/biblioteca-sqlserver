@@ -34,7 +34,7 @@ BEGIN
     SET @Estado = 0;
     PRINT 'Iniciando procedimiento de registro de libro...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; -- Esto debido a que se trata de una aplicacion de inventario y negocio
         BEGIN TRANSACTION;
         -- Verificar si el ISBN ya existe
         IF EXISTS (SELECT 1 FROM lib.Libro WHERE ISBN = @ISBN)
@@ -73,7 +73,7 @@ BEGIN
     SET NOCOUNT ON;
     PRINT 'Iniciando procedimiento de registro de usuario...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;  -- Esto debido a que se trata de una aplicacion de inventario y negocio
         BEGIN TRANSACTION;
         -- Verificar si el correo ya existe
         IF EXISTS (SELECT 1 FROM usr.Usuario WHERE Correo = @Correo)
@@ -111,7 +111,7 @@ BEGIN
     SET NOCOUNT ON;
     PRINT 'Iniciando procedimiento de registro de prestamo...';
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;  -- Esto debido a que se trata de una aplicacion de inventario y negocio
         BEGIN TRANSACTION;
         -- Verificar si el libro ya esta prestado
         IF EXISTS (
@@ -180,7 +180,7 @@ BEGIN
     PRINT 'Iniciando procedimiento de registro de devolucion...';
 
     BEGIN TRY
-        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;  -- Mas alto nivel de aislamiento para impedir errores a pesar de sacrificar rendimiento
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;  -- Esto debido a que se trata de una aplicacion de inventario y negocio
         BEGIN TRANSACTION;
         -- Verificar si existe un prestamo activo para ese usuario y libro
         IF NOT EXISTS (
